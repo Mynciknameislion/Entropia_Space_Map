@@ -1,0 +1,846 @@
+<head>
+    <title>Space Interactive Map</title>
+    <script src="scripts/jquery.min.js"></script>
+    <script>$.holdReady( true );</script>
+    <script type="text/javascript" src="scripts/jquery.maphilight.min.js"></script>
+    <link rel="stylesheet" href="scripts/jquery-ui.css">
+    <script src="scripts/jquery-ui.min.js"></script>
+    <script>$.holdReady( false );</script>
+ <style>
+    .overlay {
+        display: none;
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        opacity: 1;
+        top: 0;
+    }
+    .baseoverlay {
+        display: block;
+    }
+    .floater {
+    position: relative;
+    vertical-align: top;
+    right: 0px;
+    display: inline-block;
+    margin-right: 50px;
+    }
+    .layered-image {
+      position: relative;
+      height:800px;
+      width: 1024px;
+      display: inline-block;
+    }
+    .popup {
+        display: none;
+        border: 1px;
+        position: absolute;
+        min-width: 220px;
+        min-height: 80px;
+        border-color: white;
+        z-index: 1000;
+        background-color: rgb(30,30,30);
+        padding: 10px;
+        border-radius: 15px;
+        -webkit-box-shadow: -15px -12px 5px 0px rgba(0,0,0,0.75);
+        -moz-box-shadow: -15px -12px 5px 0px rgba(0,0,0,0.75);
+        box-shadow: -15px -12px 5px 0px rgba(0,0,0,0.75);
+    }
+    body {
+        color: white;
+        background-color: black;
+    }
+    area {
+        display: block;
+        background-color:pink;
+   }
+    .info {
+      display: none;
+    }
+    .info a {
+        color: lightblue;
+    }
+
+    .dialg {
+        display: block;
+    }
+    .ui-widget-overlay {
+        background: #777777;
+        opacity: 0.2;
+    }
+    .ui-dialog {
+        background-color:rgb(80,80,80);
+    }
+    .ui-widget-content {
+        color: white;
+        font-size: 14px;
+    }
+   .ui-widget-content a {
+        color: LightBlue;
+        font-size: 14px;
+    }
+    .ui-dialog .ui-dialog-buttonpane {
+        background-color:rgb(80,80,80);
+        padding: 0;
+        border: 0;
+    }
+    .ui-dialog .ui-dialog-buttonpane button {
+        cursor: pointer;
+        font-size: 12px;
+        margin: 0;
+        margin-bottom: 10px;
+    }
+    .ui-dialog .ui-dialog-buttonpane .ui-dialog-buttonset {
+        text-align: center;
+        float: none;
+        border: 0;
+
+    }
+    .creatures {
+        cursor: pointer;
+    }
+    .noTitleStuff .ui-dialog-titlebar {display:none}
+    .logos {
+        width:200px;
+        height:100px;
+        position: absolute;
+        display: none;
+        z-index:1001;
+        background-color: rgba(80,80,80,0.5);
+        border-radius: 15px;
+    }
+  .ui-tooltip, .arrow:after {
+    background: black;
+    border: 2px solid white;
+  }
+  .ui-tooltip {
+    padding: 10px 20px;
+    color: white;
+    border-radius: 20px;
+    font: bold 11px "Helvetica Neue", Sans-Serif;
+    text-transform: uppercase;
+    box-shadow: 0 0 7px black;
+  }
+  .arrow {
+    width: 50px;
+    height: 16px;
+    overflow: hidden;
+    position: absolute;
+    left: 50%;
+    margin-left: -35px;
+    bottom: -16px;
+  }
+  .arrow.top {
+    top: -16px;
+    bottom: auto;
+  }
+  .arrow.left {
+    left: 50px;
+    left: 50px;
+  }
+  .arrow:after {
+    content: "";
+    position: absolute;
+    left: 20px;
+    top: -20px;
+    width: 25px;
+    height: 25px;
+    box-shadow: 6px 5px 9px -9px black;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+  }
+  .arrow.top:after {
+    bottom: -20px;
+    top: auto;
+  }
+</style>
+
+    <script>
+        window.name = "_space_map";
+        $(document).ready(function() {
+            $('#imagemap').maphilight();
+
+            $(document).on('mouseover', '#SpaceMap area', function(e) {
+                var item_id = $(e.currentTarget).attr('item_id')
+                if(item_id != "!") return;
+                var item_data = $(e.currentTarget).attr('item_data');
+                var coords = $(e.currentTarget)[0].coords.split(",");
+                var difl = -50 - (parseInt(coords[2],10) / 2);
+                $("#"+ item_data +"_logo").css( { top: parseInt(coords[1],10)+25, left: parseInt(coords[0],10)-45 } );
+                $("#"+ item_data +"_logo").show();
+            });
+            $('.logos').mouseleave(function(e) {
+                $(e.currentTarget).hide();
+            });
+
+            $(document).on('click', '#SpaceMap area', function(e) {
+                // $('#popup').css( {top: e.pageY-20, left: e.pageX-20} );
+                var item_id = $(e.currentTarget).attr('item_id')
+                if(item_id =="*") return;
+                $(".info").each(function(i) {
+                    $(this).hide();
+                });
+                var item_title = $(e.currentTarget).attr('name');
+                // item_title = item_title.substring(0,item_title.length - 17);
+                $("#pop_title").html(item_title+"<br>");
+                $("#show_wp").text("");
+                $('#' + item_id).show();
+                var item = $(e.currentTarget).attr('item_wp');
+                $("#show_wp").text(item);
+                $('#popup').css( {top: e.pageY-20, left: e.pageX-$('#popup').width()/2} );
+                $('#popup').show();
+            });
+           $(document).on('click', '.creatures', function(e) {
+                // $('#popup').css( {top: e.pageY-20, left: e.pageX-20} );
+                var item_id = $(e.currentTarget).attr('data-item_id');
+                $(".info").each(function(i) {
+                    $(this).hide();
+                });
+               $("#pop_title").text("");
+               $('#show_wp').text("");
+                $('#' + item_id).show();
+                $('#popup').css( {top: e.pageY-20, left: e.pageX-$('#popup').width()/2} );
+                $('#popup').show();
+            });
+            $('#popup').mouseleave(function() {
+                $('#popup').hide();
+            });
+
+            $( ".dialg" ).dialog({
+                dialogClass: 'noTitleStuff',
+                 autoOpen: false,
+                 show: {
+                    effect: "blind",
+                    duration: 300
+                 },
+                 width: 550,
+                 minheight: 400,
+                 modal: true,
+                 buttons: {
+                   Close: function() {
+                     $( this ).dialog( "close" );
+                   }
+                 }
+            });
+           $( 'area' ).tooltip({
+              track: true ,
+              position: {
+                my: "left-50 bottom-20",
+                at: "center top",
+                of: "area",
+                using: function( position, feedback ) {
+                  $( this ).css( position );
+                  $( "<div>" )
+                    .addClass( "arrow" )
+                    .addClass( feedback.vertical )
+                    .addClass( feedback.horizontal )
+                    .appendTo( this );
+                }
+              }
+            });
+        });
+        $(window).on("load", function() {
+            $("#blocker").fadeOut(1000);
+        });
+        function toggle(caller, item) {
+            if (caller.checked) $("#"+item).show();
+            else $("#"+item).hide();
+        }
+
+    </script>
+</head>
+<body>
+<div id="blocker" style="position: absolute;display: block;width: 100%;height: 100%;background-color: black;z-index: 2000;"><center><h2>Loading, please wait.</h2></center></div>
+<center><h3> Space Map VU 16.4.0 - June 2019 (updated July 2021) </h3>
+		<h4>In chrome press Ctrl f5 to clear cache for updates</h4>
+<span style="font-size:13px">Most of the items in the map are interactive (clickable)</span><br>
+    <span style="font-size:11px">&copy; Anny Divine Thundergirl - with the collaboration of Monria, KISS/Kronan, ToS - Normandie - Oooeeeoooahah tingtang wallawalabingbang</span><br>
+    <span style="font-size: 7px;"><br></span>
+    <div style="position:relative;">
+        <div class="layered-image">
+            <div class="baseoverlay overlay" id="layer0" >
+			
+                <img src="images/base-map.png">
+            </div>
+			
+            <div class="overlay" id="layer1" >
+                <img src="images/deep-space-map.png">
+            </div>
+			
+            <div class="overlay" id="layer1_1" >
+                <img src="images/landing-map.png">
+            </div>
+            <div class="overlay" id="layer2" >
+                <img src="images/lootable-map.png">
+            </div>
+            <div class="overlay" id="layer3" >
+                <img src="images/server-lines-map.png">
+            </div>
+            <div class="overlay" id="layer4" >
+            </div>
+            <div class="baseoverlay overlay" id="layer5" >
+                <!--<img src="images/la-map.png">-->
+            </div>
+            <div class="overlay" id="layer6" >
+                 <img src="images/creature-skyflail-map.png">
+            </div>
+            <div class="overlay" id="layer7" >
+                 <img src="images/creature-hermit-map.png">
+            </div>
+            <div class="overlay" id="layer8" >
+                 <img src="images/creature-cosmic-map.png">
+            </div>
+            <div class="overlay" id="layer9" >
+                 <img src="images/creature-dropship-map.png">
+            </div>
+            <div class="overlay" id="layer10" >
+                 <img src="images/creature-dymlek-map.png">
+            </div>
+            <div class="overlay" id="layer11" >
+                 <!--<img id="img_gates" src="secret/warp-gates-map.png">-->
+            </div>
+			<div class="overlay" id="layer12" >
+                 <img src="images/creature-locusta-map.png">
+            </div>
+			<div class="overlay" id="layer13" >
+                 <img src="images/creature-dropshipevent-map.png">
+            </div>
+            <div class="baseoverlay overlay" id="layer99" >
+			
+			
+                <img id="imagemap" src="images/blank-map.png" usemap="#SpaceMap">
+            </div>
+			
+            <div class="overlay" id="layer101" >
+                 <div style="height:200px;"></div>
+                <div style="background-color:white;width:400px;height:400px;opacity:1;border-radius: 100px;">
+                <div style="height:100px;"></div>
+                <img src="images/funny.png"><br>
+                    <span style="font-size:40px;color:red"><b>Funny...</b></span>
+                </div>
+            </div>
+            <div class="overlay" id="layer102" >
+                <!--<img src="images/pirates.png">-->
+            </div>
+			
+        </div>
+
+        <div class="floater" style="height:800px;">
+            <div style="text-align: left;">
+                <div style="height:20px;"></div>
+                Map Details:<br>
+				
+                <input onclick="toggle(this,'layer1')" type="checkbox" id="deep"> <span style="color: rgb(219,36,246);">Deep Space</span><br>
+                <input onclick="toggle(this,'layer1_1')" type="checkbox" id="landing"> <span style="color: rgb(74,170,150);">Landing Zones</span><br>
+                <input onclick="toggle(this,'layer2')" type="checkbox" id="lootable"> <span style="color: rgb(219,36,14);">Lootable PvP</span><br>
+			
+                <input onclick="toggle(this,'layer3')" type="checkbox" id="servers"> <span style="color: rgb(220,220,220);">Servers Borders</span><br>
+                </p>
+                </p>
+                Creature Locations:<br>
+				
+                <input class="creaturesI" onclick="toggle(this,'layer6')" type="checkbox" id="SkyflailNGI"> <span data-item_id="SkyflailNG" class="creatures"  style="color: rgb(94,225,243);">SkyFlail</span><br>
+                <input class="creaturesI" onclick="toggle(this,'layer7')" type="checkbox" id="HermitNGI"> <span data-item_id="HermitNG" class="creatures" style="color: rgb(219,36,246);">Hermit</span><br>
+                <input class="creaturesI" onclick="toggle(this,'layer8')" type="checkbox" id="CosmicNGI"> <span data-item_id="CosmicNG" class="creatures" style="color: rgb(26,177,100);">Cosmic</span><br>
+                <input class="creaturesI" onclick="toggle(this,'layer9')" type="checkbox" id="DropshipNGI"> <span data-item_id="DropshipNG" class="creatures" style="color: rgb(179,193,14);">Dropship</span><br>
+                <input class="creaturesI" onclick="toggle(this,'layer10')" type="checkbox" id="DymlekNGI"> <span data-item_id="DymlekNG" class="creatures" style="color: rgb(26,177,100);">Dymlek</span><br>
+                <!--<input disabled class="creaturesI" onclick="toggle(this,'layer10')" type="checkbox" id="LocustaNGI"> <span data-item_id="LocustaNG" class="creatures" style="color: rgb(226,25,100);">Locusta</span><br>-->
+                <input class="creaturesI" onclick="toggle(this,'layer12')" type="checkbox" id="LocustaNGI"> <span data-item_id="LocustaNG" class="creatures" style="color: rgb(226,25,100);">Locusta</span><br>
+				<input class="creaturesI" onclick="toggle(this,'layer13')" type="checkbox" id="DropshipNGI"> <span data-item_id="DropshipNG" class="creatures" style="color: rgb(179,193,14);">Dropship Event Wave</span><br>
+                
+				</p>
+                </p>
+                Others:<br>
+                <div id="wgates"><input onclick="toggle(this,'layer101')" type="checkbox" id="gates"> <span style="color: rgb(255,255,255);">Warp Gates</span><br></div>
+                <div id="t_wgates" style="display:none;"><input onclick="toggle(this,'layer11')" type="checkbox" id="true_gates"> <span style="color: rgb(255,255,255);">Warp Gates</span><br></div>
+				
+                <!-- <input onclick="toggle(this,'layer102')" type="checkbox" id="pirates"> <span style="color: rgb(255,255,255);">Pirate Campers</span><br> -->
+                </p>
+                <input onclick="toggle(this,'waypoints')" type="checkbox" id="wayp">Waypoints List<br>
+				
+                <center>(On bottom of the page)</center>
+                <br>
+            </div>
+        </div>
+    </div>
+<map name="SpaceMap" id="SpaceMap">
+    <area shape="circle" coords="192,162,10" item_wp="/wp [Space, 58054, 81246, -56, Monria Space Station]" name="Monria Space Station" title="Monria Space Station - Click for info" item_id="MonriaSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="426,177,8" item_wp="/wp [Space, 69536, 80528, -25, Rocktropia Space Station]" name="Rocktropia Space Station" title="Rocktropia Space Station - Click for info" item_id="RocktropiaSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="750,166,8" item_wp="/wp [Space, 85276, 81077, -428, Toulan Space Station]"  name="Toulan Space Station" title="Toulan Space Station - Click for info" item_id="ToulanSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="820,403,8" item_wp="/wp [Space, 88729, 69536, -75, Next Island Space Station]" name="Next Island Space Station" title="Next Island Space Station - Click for info" item_id="NextIslandSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="571,636,10" item_wp="/wp [Space, 76592, 58324, -50, Arkadia Moon]" name="Arkadia Moon " title="Arkadia Moon - Click for info" item_id="ArkMoon" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="595,631,8" item_wp="/wp [Space, 77728, 58544, -50, Arkadia Space Station]"  name="Arkadia Space Station" title="Arkadia Space Station - Click for info" item_id="ArkadiaSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="258,629,8" item_wp="/wp [Space, 61344, 58544, -77, Cyrene Space Station]"  name="Cyrene Space Station" title="Cyrene Space Station - Click for info" item_id="CyreneSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="200,399,8" item_wp="/wp [Space, 58498, 69704, -81, Calypso Space Station]" name="Calypso Space Station" title="Calypso Space Station - Click for info" item_id="CalypsoSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="205,408,8" item_wp="/wp [Space, 58810, 69254, -200, Crystal Palace Space Station]" name="Crystal Palace Space Station" title="Crystal Palace Space Station - Click for info" item_id="CrystalPalaceSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="205,389,8" item_wp="/wp [Space, 58787, 70150, 0, Asteroid F.O.M.A]" name="Asteroid F.O.M.A" title="Asteroid F.O.M.A - Click for info" item_id="FomaSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="238,175,23" item_wp="/wp [Space, 59427, 80620, 153, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="419,219,23" item_wp="/wp [Space, 69161, 78545, -50, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="732,266,23" item_wp="/wp [Space, 84324, 76057, -592, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="779,370,23" item_wp="/wp [Space, 86645, 71153, 98, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="606,550,23" item_wp="/wp [Space, 78324, 62411, -277, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="229,569,23" item_wp="/wp [Space, 59935, 61464, 325, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="249,373,23" item_wp="/wp [Space, 60969, 71006, 555, Skyflail Nesting Grounds]" name="Skyflail Nesting Grounds" title="Skyflail Nesting Grounds - Click for info" item_id="SkyflailNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="199,235,23" item_wp="/wp [Space, 58464, 77735, -1250, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="467,272,23" item_wp="/wp [Space, 71479, 75925, -1100, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="805,265,23" item_wp="/wp [Space, 87064, 76298, 2137, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="778,438,23" item_wp="/wp [Space, 86663, 67933, -1040, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="641,608,23" item_wp="/wp [Space, 79967, 59627, -1926, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="298,538,23" item_wp="/wp [Space, 63287, 62980, 50, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="298,445,23" item_wp="/wp [Space, 63287, 67571, -1160, Hermit Nesting Grounds]" name="Hermit Nesting Grounds" title="Hermit Nesting Grounds - Click for info" item_id="HermitNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="275,235,23" item_wp="/wp [Space, 62215, 77709, -720, Sayah Space]" name="Sayah Space " title="Sayah Space - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="388,271,23" item_wp="/wp [Space, 67682, 75926, 650, Rocktropia Training Grounds]" name="Rocktropia Training Grounds" title="Rocktropia Training Grounds - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="768,218,23" item_wp="/wp [Space, 86144, 78521, 400, Barton's Corridor]" name="Barton's Corridor" title="Barton's Corridor - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="727,402,23" item_wp="/wp [Space, 84166, 69634, 563, Next Island Training Grounds]" name="Next Island Training Grounds" title="Next Island Training Grounds - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="557,588,23" item_wp="/wp [Space, 76205, 60342, 1389, Arkadia Training Grounds]" name="Arkadia Training Grounds " title="Arkadia Training Grounds - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="275,595,23" item_wp="/wp [Space, 62153, 60189, -851, Cyrene Training Grounds]" name="Cyrene Training Grounds" title="Cyrene Training Grounds - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="232,445,23" item_wp="/wp [Space, 60071, 67564, 1230, Calypso Training Grounds]" name="Calypso Training Grounds" title="Calypso Training Grounds - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+
+
+    <area shape="circle" coords="800,575,8" item_wp="/wp [Space, 87729, 61197, -500, Hermes Space Station]" name="Hermes Space Station" title="Hermes Space Station - Click for info" item_id="GenericSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="769,542,794,567" item_wp="/wp [Space, 86786, 62219, -729, Eschenbach's Gate]" name="Eschenbach's Gate " title="Eschenbach's Gate - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="768,601,794,625" item_wp="/wp [Space, 86786, 59386, 1610, Dymlin Space]" name="Dymlin Space" title="Dymlin Space - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="410,527,8" item_wp="/wp [Space, 68782, 63574, -480, Zeus Space Station]" name="Zeus Space Station" title="Zeus Space Station - Click for info" item_id="GenericSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="433,503,467,548" item_wp="/wp [Space, 70692, 63581, -1342, Gordon's Belt]" name="Gordon's Belt" title="Gordon's Belt - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="410,400,8" item_wp="/wp [Space, 68782, 69720, -480, Erebos Space Station]" name="Erebos Space Station" title="Erebos Space Station - Click for info" item_id="GenericSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="419,393,442,417" item_wp="/wp [Space, 69717, 69476, -590, Graveyeard Fields]" name="Graveyeard Fields" title="Graveyeard Fields - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="430,368,453,390" item_wp="/wp [Space, 70242, 70726, 2099, Void of tears]" name="Void of tears" title="Void of tears - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="610,399,8" item_wp="/wp [Space, 78493, 69720, -2542, Athena Space Station]" name="Athena Space Station" title="Athena Space Station - Click for info" item_id="GenericSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="584,361,618,385" item_wp="/wp [Space, 78049, 71003, 1356, Welmik Expanse]" name="Welmik Expanse" title="Welmik Expanse - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="602,405,626,429" item_wp="/wp [Space, 78667, 68875, -2417, New Berand]" name="New Berand " title="New Berand - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="626,203,8" item_wp="/wp [Space, 79228, 79228, -710, Howling Mine]" name="Howling Mine" title="Howling Mine - Click for info" item_id="GenericSS" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="rect" coords="591,191,614,214" item_wp="/wp [Space, 78065, 79313, -1100, Rackham's Nest]" name="Rackham's Nest" title="Rackham's Nest - Click for info" item_id="CosmicNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+    <area shape="circle" coords="700,590,20" item_wp="/wp [Space, 83300, 60600, 188, Dymlek]" name="Dymlek Spawn" title="Dymlek Spawn - Click for info" item_id="DymlekNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+    <area shape="circle" coords="647,263,30" item_wp="/wp [Space, 79337, 75775, 100, Dropships]" name="Dropships Spawn" title="Dropships Spawn - Click for info" item_id="DropshipNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+	<area shape="circle" coords="390,580,15" item_wp="/wp [Space, 68237, 60592, -592, Locusta]" name="Locusta Spawn" title="Locusta Spawn - Click for info" item_id="LocustaNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+	<area shape="circle" coords="293,375,11" item_wp="/wp [Space, 62808, 70900, 1808, Dropshipsevebtwave]" name="Dropships event Spawn" title="Dropships event Spawn - Click for info" item_id="DropshipNG" data-maphilight='{"stroke":false,"fillColor":"ff0000","fillOpacity":0.6}'>
+
+
+    <area shape="circle" name="" title="Monria - Click for info" coords="153,167,12" item_id="Monria"  data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="Arkadia - Click for info" coords="597,707,39" item_id="Arkadia" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="Cyrene - Click for info" coords="256,719,48" item_id="Cyrene" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="Calypso - Click for info" coords="105,403,62" item_id="Calypso" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="NextIsland - Click for info" coords="914,396,44" item_id="NextIsland" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="Toulan - Click for info" coords="891,100,23" item_id="Toulan" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+    <area shape="circle" name="" title="Rocktropia - Click for info" coords="432,79,41" item_id="Rocktropia" data-maphilight='{"stroke":true,"strokeColor":"900000","fade": true,"strokeWidth":5, "strokeOpacity":0.4,"fill":true,"fillColor":"000000","fillOpacity":0.2}'>
+
+
+</map>
+        </center>
+        <center>
+        <div id="waypoints" style="display:none;">
+            <pre>
+
+Monria
+/wp [Space, 58054, 81246, -56, Monria Space Station]
+/wp [Space, 59427, 80620, 153, Skyflail Nesting Grounds]
+/wp [Space, 62215, 77709, -720, Sayah Space]
+/wp [Space, 58464, 77735, -1250, Hermit Nesting Grounds]
+
+Rocktropia
+/wp [Space, 69536, 80528, -25, Rocktropia Space Station]
+/wp [Space, 69161, 78545, -50, Skyflail Nesting Grounds]
+/wp [Space, 71479, 75925, -1100, Hermit Nesting Grounds]
+/wp [Space, 67682, 75926, 650, Rocktropia Training Grounds]
+
+Toulan
+/wp [Space, 85276, 81077, -428, Toulan Space Station]
+/wp [Space, 86144, 78521, 400, Barton's Corridor]
+/wp [Space, 87064, 76298, 2137, Hermit Nesting Grounds]
+/wp [Space, 84324, 76057, -592, Skyflail Nesting Grounds]
+
+Next Island
+/wp [Space, 88729, 69536, -75, Next Island Space Station]
+/wp [Space, 84166, 69634, 563, Next Island Training Grounds]
+/wp [Space, 86645, 71153, 98, Skyflail Nesting Grounds]
+/wp [Space, 86663, 67933, -1040, Hermit Nesting Grounds]
+
+Arkadia
+/wp [Space, 77728, 58544, -50, Arkadia Space Station]
+/wp [Space, 76592, 58324, -50, Arkadia Moon]
+/wp [Space, 78324, 62411, -277, Skyflail Nesting Grounds]
+/wp [Space, 79967, 59627, -1926, Hermit Nesting Grounds]
+/wp [Space, 76205, 60342, 1389, Arkadia Training Grounds]
+
+Cyrene
+/wp [Space, 61344, 58544, -77, Cyrene Space Station]
+/wp [Space, 63287, 62980, 50, Hermit Nesting Grounds]
+/wp [Space, 62153, 60189, -851, Cyrene Training Grounds]
+/wp [Space, 59935, 61464, 325, Skyflail Nesting Grounds]
+
+Calypso
+/wp [Space, 58498, 69704, -81, Calypso Space Station]
+/wp [Space, 58810, 69254, -200, Crystal Palace Space Station]
+/wp [Space, 58787, 70150, 0, Asteroid F.O.M.A]
+/wp [Space, 60969, 71006, 555, Skyflail Nesting Grounds]
+/wp [Space, 63287, 67571, -1160, Hermit Nesting Grounds]
+/wp [Space, 60071, 67564, 1230, Calypso Training Grounds]
+
+Howling Mine
+/wp [Space, 79228, 79228, -710, Howling Mine]
+/wp [Space, 78065, 79313, -1100, Rackham's Nest]
+
+Erebos Space Station
+/wp [Space, 68782, 69720, -480, Erebos Space Station]
+/wp [Space, 69717, 69476, -590, Graveyeard Fields]
+/wp [Space, 70242, 70726, 2099, Void of tears]
+
+Athena Space Station
+/wp [Space, 78493, 69720, -2542, Athena Space Station]
+/wp [Space, 78049, 71003, 1356, Welmik Expanse]
+/wp [Space, 78667, 68875, -2417, New Berand]
+
+Hermes Space Station
+/wp [Space, 87729, 61197, -500, Hermes Space Station]
+/wp [Space, 86786, 62219, -729, Eschenbach's Gate]
+/wp [Space, 86786, 59386, 1610, Dymlin Space]
+
+Zeus Space Station
+/wp [Space, 68782, 63574, -480, Zeus Space Station]
+/wp [Space, 70692, 63581, -1342, Gordon's Belt]
+
+Others
+/wp [Space, 83300, 60600, 188, Dymlek]
+/wp [Space, 79337, 75775, 100, Dropships]
+/wp [Space, 62808, 70900, 1808, Dropshipsevebtwave]
+/wp [Space, 68237, 60592, -592, Locusta]
+
+
+            </pre>
+        </div>
+        </center>
+
+<div id="popup" class="popup" style="display:none;">
+    <center> <div id="pop_title" style="color:red; "></div></center>
+    <div class="info" id="Monria" style="width:400px;">
+        <center>
+            <img src="images/Monria.png">
+        <br>
+			<!--Home of Cthulhu <br>-->
+            <!--<a target="_monria_map" href="http://www.entropia-library.xyz/monria-map/">Home</a> of Cthulhu<br>-->
+			<a target="_monria_map" href="https://www.virtualsense.eu/forum/">Home</a> of Cthulhu<br>
+			
+        <br>
+            <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#place_monria').dialog('open');">Click for More Info</span><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="Calypso" style="width:400px;">
+        <center>
+            <img src="images/Calypso.png">
+        <br>
+        <br>
+        <a href="http://www.planetcalypsoforum.com" target="_calypso">Calypso Forum (PCF)</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="Rocktropia" style="width:400px;">
+        <center>
+            <img src="images/Rocktropia.png">
+        <br>
+            ROCKtropia is the Pop culture Capital <br>
+        <br>
+        <a href="http://rocktropia.com/" target="_rocktropia">Rocktropia Site</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="Arkadia" style="width:400px;">
+        <center>
+            <img src="images/Arkadia.png">
+        <br><br>
+            Planet Arkadia - Treasure Hunting <br>
+        <br>
+        <a href="http://arkadiaforum.com/" target="_arkadiamoon">Arkadia Forum</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="Toulan" style="width:400px;">
+        <center>
+            <img src="images/Toulan.png">
+        <br>
+            <br>
+        ...waiting for its history to be rewritten in its sands... <br>
+        <br>
+        <a href="https://www.virtualsense.eu/forum/" target="_rocktropia">Toulan Forum</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="NextIsland" style="width:400px;">
+        <center>
+            <img src="images/NextIsland.png">
+        <br>
+        ... the lost paradise <br>
+        <br>
+           <a href="https://forum.nextisland.com" target="_nextisland">Next Island Forum</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="Cyrene" style="width:400px;">
+        <center>
+            <img src="images/Cyrene.png">
+        <br>
+            <br>
+        Cyrene war of Clans <br>
+        <br>
+        <a href="https://cyreneforum.com/" target="_cyrene">Cyrene Forum</a><br>
+        <br>
+        </center>
+    </div>
+	
+
+    <div class="info" id="MonriaSS">
+        <center>
+        <br>
+        Entry point for Monria Moon<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="CalypsoSS">
+        <center>
+        <br>
+        Space dock for Planet Calyspo<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="CrystalPalaceSS">
+        <center>
+        <br>
+        Entry for Crystal Palace<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="FomaSS">
+        <center>
+        <br>
+        Entry for Asteroid F.O.M.A.<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="ArkMoon">
+        <center>
+			<img src="images/ArkMoon.png">
+            <br>
+            Planet Arkadia Moon<br>
+            <br>
+        <a href="http://arkadiaforum.com/" target="_arkadiamoon">Arkadia Forum</a><br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="ArkadiaSS">
+        <center>
+        <br>
+        Space dock for Planet Arkadia<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="ToulanSS">
+        <center>
+        <br>
+        Space dock for Planet Toulan<br>
+
+        <br>
+        </center>
+    </div>
+    <div class="info" id="RocktropiaSS">
+        <center>
+        <br>
+        Space dock for Planet Rocktropia<br>
+        <br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="NextIslandSS">
+        <center>
+        <br>
+        Space dock for Next Island<br>
+        <br>
+        </center>
+    </div>
+    <div class="info" id="CyreneSS">
+        <center>
+        <br>
+        Space dock for Cyrene<br>
+        <br>
+        </center>
+    </div>
+
+    <div class="info" id="GenericSS">
+        <center>
+        <span style="color:lightblue"></span><br>
+
+        <br>
+
+        </center>
+    </div>
+
+    <div class="info" id="SkyflailNG">
+        <center>
+        <span style="color:lightblue">Skyflail</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_skyflail').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+
+    <div class="info" id="HermitNG">
+        <center>
+        <span style="color:lightblue">Hermit</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_hermit').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+
+    <div class="info" id="DropshipNG">
+        <center>
+        <span style="color:lightblue">Dropship</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_dropship').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+    <div class="info" id="LocustaNG">
+        <center>
+        <span style="color:lightblue">Locusta</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_locusta').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+
+    <div class="info" id="DymlekNG">
+        <center>
+        <span style="color:lightblue">Dymlek</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_dymlek').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+
+    <div class="info" id="CosmicNG">
+        <center>
+        <span style="color:lightblue">Cosmic Horror</span><br>
+        <br>
+        <span style="cursor:hand;color:cyan;" onClick="$('#popup').hide(); $('#creature_cosmic').dialog('open');">Click for More Info</span><br>
+        <br>
+
+        </center>
+    </div>
+    <div id="show_wp">
+    </div>
+</div>
+
+<div class="dialg" id="creature_skyflail" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/skyflail1.png"><br><br>
+        Skyflails are magnificent long distance travellers.
+        There is no other creature that travels further during its lifespan.
+        The reason behind the Skyflail's wanderlust remains a mystery, however breeding is believed to be a large part of it.
+        Each mature Skyflail accounts for over a thousand offspring. If not for the fact that many succumb to predation or disease, humans would likely be facing a silent universal invasion.
+        <br><br>
+        <a href="http://www.planetcalypsoforum.com/forums/showthread.php?272161-Skyflail&highlight=skyflail" target="_pcf">Link to PCF</a>
+    </center>
+</div>
+
+<div class="dialg" id="creature_locusta" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/locusta.png"><br><br>
+        The astronautically horrific Locusta creature resembles a ghastly hybrid between a wasp and lobster.
+        This appearance disguises a keen intelligence which rivals that of humans. Disturbingly,
+        this intelligence seems to have developed in conjuction with a singular purpose in life:
+        to wander the galaxy and devour everything in its path, biological or mineral.
+        <br><br>
+        <a href="http://www.planetcalypsoforum.com/forums/showthread.php?272160-Locusta&highlight=locusta" target="_pcf">Link to PCF</a>
+    </center>
+</div>
+
+<div class="dialg" id="creature_dymlek" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/dymlek1.png"><br><br>
+        Truly a freak of nature, the Dymlek possesses unique powers of rejuvenation.
+        Through a series of complex chemical reactions not yet fully understood, these creatures appear to be virtually immortal.
+        None have been known to die of natural causes, causing many top medical researchers to become quite interested in studying their physiology
+        for clues on how to prolong the lives of other living creatures, especially humans.
+        <br><br>
+        <a href="http://www.planetcalypsoforum.com/forums/showthread.php?272159-Dymlek&highlight=dymlek" target="_pcf">Link to PCF</a>
+    </center>
+</div>
+
+<div class="dialg" id="creature_dropship" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/dropship1.png"><br><br>
+
+        <br><br>
+        <a href="http://www.planetcalypsoforum.com/forums/showthread.php?272158-Dropship&highlight=dropship" target="_pcf">Link to PCF</a>
+    </center>
+</div>
+
+<div class="dialg" id="creature_hermit" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/hermit1.png"><br><br>
+
+        <br><br>
+
+    </center>
+</div>
+
+<div class="dialg" id="creature_cosmic" style="display:none;">
+    <center>
+        <img style="width:300px;" src="images/cosmic.png"><br><br>
+        Cosmic Horror is one of the rare life forms found in the vacuum of space.
+        Its diet consists of literally anything ranging from space gravel to small spacecraft.
+        The natural habitat for Cosmic Horrors is usually deep space but there have been rare sightings recorded close to planetary bodies and even space stations.
+
+        <br><br>
+        <a href="http://www.planetcalypsoforum.com/forums/showthread.php?272157-Cosmic-Horror&highlight=horror" target="_pcf">Link to PCF</a>
+    </center>
+</div>
+
+<div class="dialg" id="place_monria" style="display:none;width:450px;">
+    <center>
+        <img style="width:300px;" src="images/Monria.png"><br>
+        <div style="text-align: justify;">
+In the distant future, an evil exists so stealth that one is unaware of how subtle and pervasive the Cthulhu effects can be on one's mind, until it is too late.
+Cthulhu never shows himself, but is ever at odds with those who invade his domain. His focus is to inhabit your every thought until you go mad.
+<br><br>
+You must be of sound mind and body to be able to resist the seductive nature of his attempts, for on Monria, Cthulhu is not a creature to kill for reward,
+but an unfathomable and controlling energy that permeates every space.
+<br><br>
+When you think you are safe ... chances are you are not.
+        </div>
+        <br><br>
+       <!-- <a href="https://www.monria.com/forum/forums/monria-daily-missions.713/" target="_monria">Monria Daily Missions</a>&nbsp;|&nbsp;<a href="https://www.monria.com/forum/forums/monria-iron-missions.714/" target="_monria">Monria Iron Missions</a><br>
+        <a href="https://www.monria.com/forum/forums/monria-beginner-missions.711/&" target="_monria">Monria Beginner Missions</a>&nbsp;|&nbsp;<a href="https://www.monria.com/forum/forums/monria-other-missions.715/" target="_monria">Monria "Other" Missions</a>
+        -->
+		<br><br>
+        <a href="https://www.virtualsense.eu/forum/" target="_monria">Monria Forum</a><br>
+    </center>
+</div>
+
+    <script>
+        $("#img_gates").on('load', function() {
+                $('#wgates').hide();
+                $('#t_wgates').show();
+            });
+
+
+    </script>
+</body>
+</html>
